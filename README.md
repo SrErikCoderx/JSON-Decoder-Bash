@@ -16,6 +16,9 @@ _`./JDB.sh directory argument`_
 ```shell
 pkg install jq
 ```
+```shell
+chmod +x JDB.sh
+```
 # Codigo
 ```html
 #!/bin/bash
