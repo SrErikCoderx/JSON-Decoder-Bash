@@ -1,70 +1,79 @@
 # JSON-Decoder-Bash
-JDB Es un script de bash el cual cree para el decifrado de los archivos de JSON UI de Minecraft Bedrock es algo simple ya que usa un formato unicode que es fácil de leer si cambias letra x letra a su formato en unicode.
+  <h3 align="center">JDB</h3>
+  JDB es un script de bash el cual cree con el motivo de decodificar los archivos JSON formateados en Unicode a su formato original UTF-8 para permitir la visualizacion de estos.
+  
+# Funcionamiento
+* JQ
+verifica el archivo e acomoda la estructura si es que esta minificada
 
-Este funciona de la siguiente manera:
+* Perl
+convierte los caracteres unicode en caracteres normales de formato UTF-8 decodificando de esta manera el archivo por completo.
 
 
-_`./JDB.sh directory argument`_
 
-
-# Argumentos
-"_`--reorder`_": Este como su nombre lo dice reeordena la estructura del archivo, tiene algunos fallos los cuales son: Aveces se añaden Llaves ([]), Corchetes ({}) y comas (,) al final del archivo.
-
-
-"_`--fix`_": Este arregla la estructura del archivo si es que ahi un error, lamentablemente no funciona del todo bien.
-# Requerimientos
-```shell
-pkg install jq
+# Instalacion
+```sh
+git clone https://github.com/SrErikCoderx/JSON-Decoder-Bash.git
 ```
-```shell
+```sh
+cd JSON-Decoder-Bash
+```
+```sh
 chmod +x JDB.sh
 ```
+```sh
+./JDB.sh <directory> <argument>
+```
+_`El argumento no es obligatorio.`_
+
+# Argumentos
+* "_`--fxo`_": Este acomoda la estructura si el archivo esta minificado, al igual que borra comentarios normales (//) y tambien comentarios multilinea (/**/).
+
+# Requerimientos
+* GIT
+```sh
+pkg install git
+```
+* JQ
+```sh
+pkg install jq
+```
+
 # Codigo
-```html
+
+```sh
 #!/bin/bash
 
-# Verificar si se proporciona un directorio
 if [ -z "$1" ]; then
   echo "Por favor, proporciona un directorio."
   exit 1
 fi
 
-# Comprobar si el directorio existe
 if [ ! -d "$1" ]; then
   echo "El directorio $1 no existe."
   exit 1
 fi
 
-# Variable para controlar el reordenamiento
-REORDER=false
-FIX=false
+FXO=false
 
-# Verificar si se pasó el argumento "--reorder" o "--fix"
-if [ "$2" == "--reorder" ]; then
-  if ! command -v jq &> /dev/null; then
-    echo "El comando 'jq' no está instalado. Instálalo con 'apt install jq'."
-    exit 1
-  fi
-  REORDER=true
+if [ "$2" == "--fxo" ]; then
+  FXO=true
 fi
 
-if [ "$2" == "--fix" ]; then
-  FIX=true
-fi
-
-# Función para intentar corregir un archivo JSON
 fix_json() {
   local file="$1"
   
-  # Intentar usar jq para reescribir el JSON en formato válido
+  sed -i 's/\/\/.*$//' "$file"
+  sed -i '/\/\*/,/\*\//d' "$file"
+
+  sed -i 's/\s*$//' "$file"
+
   if ! jq '.' "$file" > "${file}.fixed" 2>/dev/null; then
     echo "Corrigiendo errores en $file..."
     
-    # Eliminar caracteres no válidos y estructuras incompletas
-    sed -i 's/[^,:{}0-9.\-+eE\"a-zA-Z_\s]//g' "$file"    # Quita caracteres no válidos
-    sed -i '/^[[:space:]]*$/d' "$file"                      # Elimina líneas vacías
+    sed -i 's/[^,:{}0-9.\-+eE\"a-zA-Z_\s]//g' "$file"   
+    sed -i '/^[[:space:]]*$/d' "$file"                  
     
-    # Intentar nuevamente reordenar con jq
     if jq '.' "$file" > "${file}.fixed" 2>/dev/null; then
       mv "${file}.fixed" "$file"
       echo "Archivo $file corregido exitosamente."
@@ -78,27 +87,17 @@ fix_json() {
   fi
 }
 
-# Procesar los archivos .json en el directorio
 find "$1" -type f -name "*.json" | while read file; do
-  # Eliminar comentarios y espacios sobrantes
-  sed -i 's/^\s*\/\/.*$//' "$file"
-  sed -i 's/\s*$//' "$file"
   sed -i 's/\/\*[^*]*\*\///g' "$file"
+
+  sed -i 's/\s*$//' "$file"
   
-  # Desencriptar Unicode (\uXXXX)
   perl -pi -e 's/\\u([0-9A-Fa-f]{4})/chr(hex($1))/ge' "$file"
   
-  # Si se requiere arreglar el archivo JSON
-  if [ "$FIX" = true ]; then
+  if [ "$FXO" = true ]; then
     fix_json "$file"
-  fi
-
-  # Si se requiere reordenar, hacerlo
-  if [ "$REORDER" = true ]; then
-    jq '.' "$file" > "${file}.tmp" && mv "${file}.tmp" "$file" || echo "Error al reordenar $file"
   fi
 done
 
 echo "Proceso completado."
-
 ```
